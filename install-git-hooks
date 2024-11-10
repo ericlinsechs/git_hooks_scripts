@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 if ! test -d .git; then
-    echo "Execute scripts/install-git-hooks in the top-level directory."
+    echo "Execute git_hooks_scripts/install-git-hooks in the top-level directory."
     exit 1
 fi
 
@@ -10,13 +10,9 @@ mkdir -p .git/hooks
 ln -sf ../../git_hooks_scripts/pre-commit.hook .git/hooks/pre-commit || exit 1
 chmod +x .git/hooks/pre-commit
 
-# ln -sf ../../scripts/commit-msg.hook .git/hooks/commit-msg || exit 1
-# chmod +x .git/hooks/commit-msg
-
-ln -sf ../../git_hooks_scripts/pre-push.hook .git/hooks/pre-push || exit 1
-chmod +x .git/hooks/pre-push
-
 touch .git/hooks/applied || exit 1
+
+cp git_hooks_scripts/.clang-format ./
 
 echo
 echo "Git hooks are installed successfully."

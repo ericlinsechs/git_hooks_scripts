@@ -20,7 +20,7 @@ CPPCHECK_suppresses="--inline-suppr harness.c \
 # --suppress=constParameterCallback \
 # --suppress=constParameterPointer \
 # --suppress=checkLevelNormal"
-CPPCHECK_OPTS="-I. --enable=all --error-exitcode=1 --force $CPPCHECK_suppresses $CPPCHECK_unmatched ."
+CPPCHECK_OPTS="-I. --enable=all --error-exitcode=1 --force $CPPCHECK_suppresses $CPPCHECK_unmatched"
 
 RETURN=0
 CLANG_FORMAT=$(which clang-format)
@@ -48,16 +48,6 @@ if [ -z "$($CPPCHECK --version | grep -E '^Cppcheck\s2')" ]; then
     fi
 fi
 
-ASPELL=$(which aspell)
-if [ $? -ne 0 ]; then
-    echo "[!] aspell not installed. Unable to do spelling check." >&2
-    exit 1
-fi
-if [ -z "$(aspell dump dicts | grep -E '^en$')" ]; then
-    echo "[!] aspell-en not installed. Unable to do spelling check." >&2
-    exit 1
-fi
-
 DIFF=$(which colordiff)
 if [ $? -ne 0 ]; then
     DIFF=diff
@@ -80,6 +70,8 @@ for FILE in $FILES; do
     rm -rf "${tempdir}"
     if [ $r != 0 ] ; then
         echo "[!] $FILE does not follow the consistent coding style." >&2
+        echo "    clang-format -i $FILE" >&2
+        clang-format -i $FILE
         RETURN=1
     fi
     if [ $RETURN -eq 1 ]; then
@@ -88,36 +80,16 @@ for FILE in $FILES; do
         echo "    clang-format -i $FILE" >&2
         echo
     fi
-done
 
-: << 'EOF'
-# Prevent unsafe functions
-root=$(git rev-parse --show-toplevel)
-banned="([^f]gets\()|(sprintf\()|(strcpy\()"
-status=0
-for file in $(git diff --staged --name-only | grep -E "\.(c|cc|cpp|h|hh|hpp)\$")
-do
-    filepath="${root}/${file}"
-    output=$(grep -nrE "${banned}" "${filepath}")
-    if [ ! -z "${output}" ]; then
-        echo "Dangerous function detected in ${filepath}"
-        echo "${output}"
-        echo
-        echo "Read 'Common vulnerabilities guide for C programmers' carefully."
-        echo "    https://security.web.cern.ch/security/recommendations/en/codetools/c.shtml"
+    # static analysis
+    $CPPCHECK $CPPCHECK_OPTS $FILE > /dev/null
+    if [ $? -ne 0 ]; then
         RETURN=1
+        echo "" >&2
+        echo "Fail to pass static analysis." >&2
+        echo
     fi
 done
-
-# static analysis
-$CPPCHECK $CPPCHECK_OPTS >/dev/null
-if [ $? -ne 0 ]; then
-    RETURN=1
-    echo "" >&2
-    echo "Fail to pass static analysis." >&2
-    echo
-fi
-EOF
 
 # non-ASCII filenames are not allowed.
 # Cross platform projects tend to avoid non-ASCII filenames; prevent
